@@ -20,7 +20,7 @@
 ![alt text](img/size.png)
 - **список замапленных портов:**  
 ![alt text](img/Ports.png)
-- **ip контейнера:** 
+- **ip контейнера:**  
 ![alt text](img/ipaddress.png)  
 
 - **Остановил докер образ через `docker stop cranky_khorana` (имя моего контейнера):**
