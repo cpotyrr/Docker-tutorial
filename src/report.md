@@ -16,14 +16,14 @@
 
 - **Посмотрел информацию о контейнере через `docker inspect [container_id|container_name]`**
 ![alt text](img/docker_inspect.png)
-- размер контейнера:
+- **размер контейнера:**  
 ![alt text](img/size.png)
-- список замапленных портов:  
+- **список замапленных портов:**  
 ![alt text](img/Ports.png)
-- ip контейнера:  
+- **ip контейнера:** 
 ![alt text](img/ipaddress.png)  
 
-- **Остановил докер образ через `docker stop cranky_khorana` (имя моего контейнера):
+- **Остановил докер образ через `docker stop cranky_khorana` (имя моего контейнера):**
 ![alt text](img/docker_stop.png)  
 - Проверил, что образ остановился через `docker ps`  
 ![alt text](img/docker_ps_after_stop.png)  
@@ -47,7 +47,7 @@
 
 - **Создал на локальной машине файл `nginx.conf`**
 `vim nginx.conf`  
-- **Настроил в нем по пути `/status` отдачу страницы статуса сервера `nginx`**: 
+- **Настроил в нем по пути `/status` отдачу страницы статуса сервера `nginx`**:  
 ![alt text](img/nginx_conf.png)  
 
 Это минимальный конфиг, который делает следующее:
@@ -81,7 +81,7 @@
 ![alt text](img/import.png)  
 
 
-- **Запустил импортированный контейнер** 
+- **Запустил импортированный контейнер**  
 ![alt text](img/docker_images_2.png)  
 ![alt text](img/run_imported.png)  
 
@@ -102,13 +102,13 @@
 - Скопировал созданный nginx.conf и мини сервер в контейнер и зашел в него. 
 ![alt text](img/entered_server.png) 
 
-- Установил требуемые ПО: 
+- Установил требуемые ПО:  
 ![alt text](img/downloading_soft.png)  
 
 - Скомпилировал и **запустил написанный мини сервер через spawn-fcgi на порту 8080** 
 ![alt text](img/child_swapned.png) 
 
-- **Проверил, что в браузере по localhost:81 отдается "Hello World!"** 
+- **Проверил, что в браузере по localhost:81 отдается "Hello World!"**  
 ![alt text](img/hello_world_html.png)  
 
 - **Положил файл nginx.conf по пути ./nginx/nginx.conf:**
@@ -120,7 +120,8 @@
 	- собирает исходники мини сервера на FastCgi из [Части 3](#part-3-мини-веб-сервер)
 	- запускает его на 8080 порту
 	- копирует внутрь образа написанный ./nginx/nginx.conf
-    - запускает nginx.
+    - запускает nginx.  
+
 ![alt text](img/dockerfile.png)
 
 Dockerfile с объяснениями каждой строчки:
