@@ -126,12 +126,11 @@
 Dockerfile с объяснениями каждой строчки:
 ```Dockerfile
 # Базовый образ с нужными пакетами
-# использую легковесный образ Debian.
-FROM debian:bullseye-slim
+FROM nginx
 
 # Установка нужных зависимостей
 RUN apt-get update && \
-    apt-get install -y gcc spawn-fcgi libfcgi-dev nginx && \
+    apt-get install -y gcc spawn-fcgi libfcgi-dev procps vim htop && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Копирование исходников мини-сервера внутрь контейнера
@@ -143,11 +142,11 @@ RUN gcc /usr/src/hello.c -o /usr/local/bin/hello.fcgi -lfcgi
 # Копия конфигурационного файла nginx внутрь контейнера
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Указываю Docker, что контейнер будет слушать порт 80.
+# Открытие порта 80 для внешних подключений
 EXPOSE 80
 
 # Запуск FastCGI сервер на порту 8080 и nginx
-CMD ["sh", "-c", "spawn-fcgi -p 8080 /usr/local/bin/hello.fcgi && nginx -g 'daemon off;'"]
+ENTRYPOINT ["sh", "-c", "spawn-fcgi -p 8080 /usr/local/bin/hello.fcgi && nginx -g 'daemon off;'"]
 ```
 
 В докере предпочтительно запускать сервисы через команды, которые блокируют основной процесс контейнера Поэтому: `nginx -g 'daemon off;` Эта команда запускает nginx в приоритетном-режиме, что предпочтительнее в контейнерных средах, так как поддерживает жизнеспособность основного процесса. Это гарантирует, что процесс контейнера будет жить до тех пор, пока работает nginx. Контейнер завершится, если основной процесс завершится.
@@ -165,3 +164,121 @@ CMD ["sh", "-c", "spawn-fcgi -p 8080 /usr/local/bin/hello.fcgi && nginx -g 'daem
 	>
 
 - **Проверил, что по localhost:80 доступна страничка написанного мини сервера:**  
+![alt text](img/curl_localhost_80.png)
+![alt text](img/hello_world_in_browser.png)  
+
+- **Дописал в ./nginx/nginx.conf проксирование странички /status, по которой надо отдавать статус сервера nginx**  
+![alt text](img/defined_status.png)  
+
+- **Перезапустил докер образ**  
+![alt text](img/reload_nginx_after_defining_status_page.png)  
+
+- **Проверил, что теперь по localhost:80/status отдается страничка со статусом nginx**  
+- ![alt text](img/status_page.png)  
+![alt text](img/curl_localhost_status.png)  
+
+## Part 5. Dockle
+
+- **Просканировал образ из предыдущего задания через `dockle [image_id|repository]` предварительно скачав dockle**  
+
+Мой Dockerfile до исправления ошибок:
+```Dockerfile
+# Базовый образ с нужными пакетами
+FROM nginx
+
+# Установка нужных зависимостей
+RUN apt-get update && \
+    apt-get install -y gcc spawn-fcgi libfcgi-dev procps vim htop && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Копирование исходников мини-сервера внутрь контейнера
+COPY hello.c /usr/src/hello.c
+
+# Компиляция мини-сервера
+RUN gcc /usr/src/hello.c -o /usr/local/bin/hello.fcgi -lfcgi
+
+# Копия конфигурационного файла nginx внутрь контейнера
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Открытие порта 80 для внешних подключений
+EXPOSE 80
+
+# Запуск FastCGI сервер на порту 8080 и nginx
+ENTRYPOINT ["sh", "-c", "spawn-fcgi -p 8080 /usr/local/bin/hello.fcgi && nginx -g 'daemon off;'"]
+```
+
+Ошибки и предупреждения образа, которые вывел Dockle:  
+![alt text](img/dockle_report.png)  
+
+- **Исправил образ так, чтобы при проверке через dockle не было ошибок и предупреждений**  
+
+**Исправленный Dockerfile:**
+
+```Dockerfile
+# Базовый образ с нужными пакетами
+FROM nginx
+
+# Установка нужных зависимостей
+RUN apt-get update && \
+    apt-get install -y gcc spawn-fcgi libfcgi-dev procps vim htop; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*; \
+    chown -R nginx:nginx /etc/nginx/nginx.conf; \
+    chown -R nginx:nginx /var/cache/nginx; \
+    chown -R nginx:nginx /home; \
+    touch /var/run/nginx.pid; \
+    chown -R nginx:nginx /var/run/nginx.pid
+
+USER nginx
+
+# Копирование исходников мини-сервера внутрь контейнера
+COPY server/hello.c /usr/src/hello.c
+
+USER root
+# Компиляция мини-сервера
+RUN gcc /usr/src/hello.c -o /usr/local/bin/hello.fcgi -lfcgi
+USER nginx
+
+# Копия конфигурационного файла nginx внутрь контейнера
+COPY server/nginx.conf /etc/nginx/nginx.conf
+
+# Открытие порта 80 для внешних подключений
+EXPOSE 80
+
+# Запуск FastCGI сервер на порту 8080 и nginx
+ENTRYPOINT ["sh", "-c", "spawn-fcgi -p 8080 /usr/local/bin/hello.fcgi && nginx -g 'daemon off;'"]
+
+HEALTHCHECK NONE
+```
+Отчёт от Dockle после исправления(INFO это не ошибки):  
+![alt text](img/dockle_info.png)  
+
+##  Part 6. Базовый Docker Compose
+
+- **Написал файл docker-compose.yml, с помощью которого:**
+
+	- Поднял докер контейнер из Части 5 (он должен работать в локальной сети, т.е. не нужно использовать инструкцию EXPOSE и мапить порты на локальную машину)
+		
+	- Поднял докер контейнер с nginx, который будет проксировать все запросы с 8080 порта на 81 порт первого контейнера
+
+![alt text](img/cat_nginx_conf_part_6.png)  
+![alt text](img/docker_compose_yml.png)  
+
+- **Остановил все запущенные контейнеры**  
+![alt text](img/docker_compose_down.png)  
+
+- **Собрал и запустил проект с помощью команд `docker-compose build` и `docker-compose up`**  
+
+![alt text](img/docker_compose_build.png)  
+![alt text](img/docker_compose_up_d.png)  
+![alt text](img/docker_compose_up_d_2.png)  
+![alt text](img/docker_ps_after_compose.png)  
+
+
+- **Проверил, что в браузере по *localhost:80* отдается написанная вами страничка, как и ранее**  
+![alt text](img/hello_world_in_browser_after_docker_compose.png)  
+![alt text](img/curl_localhost_80_after_docker_compose.png)  
+
+---
+## Всё!
+![alt text](img/Docker.png)  

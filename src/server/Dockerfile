@@ -3,32 +3,20 @@ FROM nginx
 
 # Установка нужных зависимостей
 RUN apt-get update && \
-    apt-get install -y gcc spawn-fcgi libfcgi-dev procps vim htop; \
-    apt-get clean; \
-    rm -rf /var/lib/apt/lists/*; \
-    chown -R nginx:nginx /etc/nginx/nginx.conf; \
-    chown -R nginx:nginx /var/cache/nginx; \
-    chown -R nginx:nginx /home; \
-    touch /var/run/nginx.pid; \
-    chown -R nginx:nginx /var/run/nginx.pid
-
-USER nginx
+    apt-get install -y gcc spawn-fcgi libfcgi-dev procps vim htop && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Копирование исходников мини-сервера внутрь контейнера
-COPY server/hello.c /usr/src/hello.c
+COPY hello.c /usr/src/hello.c
 
-USER root
 # Компиляция мини-сервера
 RUN gcc /usr/src/hello.c -o /usr/local/bin/hello.fcgi -lfcgi
-USER nginx
 
 # Копия конфигурационного файла nginx внутрь контейнера
-COPY server/nginx.conf /etc/nginx/nginx.conf
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # Открытие порта 80 для внешних подключений
 EXPOSE 80
 
 # Запуск FastCGI сервер на порту 8080 и nginx
 ENTRYPOINT ["sh", "-c", "spawn-fcgi -p 8080 /usr/local/bin/hello.fcgi && nginx -g 'daemon off;'"]
-
-HEALTHCHECK NONE
